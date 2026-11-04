@@ -1,15 +1,15 @@
 """
-analyzer.py — Módulo de análisis estadístico de poker.
+analyzer.py — Statistical analysis and GTO strategy audit module.
 
-Consulta la base de datos, calcula porcentajes VPIP/PFR,
-y evalúa la estrategia preflop contra estándares óptimos 6-max.
+Queries SQLite persistence, calculates aggregate VPIP/PFR metrics,
+and evaluates preflop strategy against 6-max No-Limit Hold'em GTO benchmarks.
 """
 
 
 class PokerAnalyzer:
-    """Analiza estadísticas de poker y genera reportes de diagnóstico."""
+    """Analyzes poker statistics and generates diagnostic strategy reports."""
 
-    # Rangos óptimos para mesas 6-max (cash game)
+    # 6-Max NLHE theoretical optimal targets (cash game)
     OPTIMAL_VPIP_MIN = 20.0
     OPTIMAL_VPIP_MAX = 27.0
     OPTIMAL_PFR_MIN = 17.0
@@ -19,128 +19,126 @@ class PokerAnalyzer:
 
     def __init__(self, database):
         """
-        Inicializa el analizador con una referencia a la base de datos.
+        Initializes the analyzer with an active database instance.
 
         Args:
-            database: Instancia de PokerDatabase ya conectada.
+            database: Connected PokerDatabase instance.
         """
         self.db = database
 
     def calculate_stats(self):
         """
-        Obtiene las estadísticas agregadas de la base de datos.
+        Retrieves aggregate statistics from the database.
 
         Returns:
-            Diccionario con total_hands, vpip_count, pfr_count,
-            vpip_pct, pfr_pct y gap.
+            Dict containing total_hands, vpip_count, pfr_count,
+            vpip_pct, pfr_pct, and gap.
         """
         return self.db.get_stats()
 
     def evaluate_strategy(self, stats):
         """
-        Evalúa la estrategia preflop comparándola con los rangos óptimos.
+        Evaluates preflop strategy against optimal 6-max benchmarks.
 
         Args:
-            stats: Diccionario de estadísticas (de calculate_stats).
+            stats: Dict of aggregated statistics (from calculate_stats).
 
         Returns:
-            Diccionario con diagnósticos para vpip, pfr y gap.
-            Cada diagnóstico tiene 'status' ('ÓPTIMO', 'ALTO', 'BAJO')
-            y 'message' con recomendación.
+            Dict with diagnostics for vpip, pfr, and gap.
         """
         diagnostics = {}
 
-        # ─── Evaluación VPIP ────────────────────────────────────────
+        # ─── VPIP Evaluation ─────────────────────────────────────────
         vpip = stats["vpip_pct"]
         if vpip < self.OPTIMAL_VPIP_MIN:
             diagnostics["vpip"] = {
-                "status": "⚠️  BAJO",
+                "status": "⚠️  TOO LOW",
                 "message": (
-                    f"VPIP {vpip:.1f}% está por debajo del rango óptimo "
+                    f"VPIP {vpip:.1f}% is below the optimal target "
                     f"({self.OPTIMAL_VPIP_MIN}-{self.OPTIMAL_VPIP_MAX}%). "
-                    "Estás jugando demasiado tight. Considera abrir más manos, "
-                    "especialmente en posición tardía (CO, BTN)."
+                    "You are playing too tight (nit). Consider opening more hands, "
+                    "especially from late position (CO, BTN)."
                 ),
             }
         elif vpip > self.OPTIMAL_VPIP_MAX:
             diagnostics["vpip"] = {
-                "status": "⚠️  ALTO",
+                "status": "⚠️  TOO HIGH",
                 "message": (
-                    f"VPIP {vpip:.1f}% está por encima del rango óptimo "
+                    f"VPIP {vpip:.1f}% is above the optimal target "
                     f"({self.OPTIMAL_VPIP_MIN}-{self.OPTIMAL_VPIP_MAX}%). "
-                    "Estás jugando demasiado loose. Reduce el rango de manos "
-                    "desde posiciones tempranas (UTG, MP)."
+                    "You are playing too loose. Tighten your opening range "
+                    "from early positions (UTG, MP)."
                 ),
             }
         else:
             diagnostics["vpip"] = {
-                "status": "✅ ÓPTIMO",
+                "status": "✅ OPTIMAL",
                 "message": (
-                    f"VPIP {vpip:.1f}% está dentro del rango óptimo "
+                    f"VPIP {vpip:.1f}% is within the optimal target "
                     f"({self.OPTIMAL_VPIP_MIN}-{self.OPTIMAL_VPIP_MAX}%)."
                 ),
             }
 
-        # ─── Evaluación PFR ─────────────────────────────────────────
+        # ─── PFR Evaluation ──────────────────────────────────────────
         pfr = stats["pfr_pct"]
         if pfr < self.OPTIMAL_PFR_MIN:
             diagnostics["pfr"] = {
-                "status": "⚠️  BAJO",
+                "status": "⚠️  TOO LOW",
                 "message": (
-                    f"PFR {pfr:.1f}% está por debajo del rango óptimo "
+                    f"PFR {pfr:.1f}% is below the optimal target "
                     f"({self.OPTIMAL_PFR_MIN}-{self.OPTIMAL_PFR_MAX}%). "
-                    "Estás entrando demasiado pasivamente (cold-calling). "
-                    "Prioriza 3-bet sobre call cuando tengas manos fuertes."
+                    "Entering pots too passively (excessive cold-calling). "
+                    "Prioritize 3-betting over flat-calling with premium holdings."
                 ),
             }
         elif pfr > self.OPTIMAL_PFR_MAX:
             diagnostics["pfr"] = {
-                "status": "⚠️  ALTO",
+                "status": "⚠️  TOO HIGH",
                 "message": (
-                    f"PFR {pfr:.1f}% está por encima del rango óptimo "
+                    f"PFR {pfr:.1f}% is above the optimal target "
                     f"({self.OPTIMAL_PFR_MIN}-{self.OPTIMAL_PFR_MAX}%). "
-                    "Estás siendo demasiado agresivo preflop. Reduce la "
-                    "frecuencia de open-raise desde posiciones tempranas."
+                    "Preflop aggression is excessively high. Trim speculative "
+                    "open-raises from early seats."
                 ),
             }
         else:
             diagnostics["pfr"] = {
-                "status": "✅ ÓPTIMO",
+                "status": "✅ OPTIMAL",
                 "message": (
-                    f"PFR {pfr:.1f}% está dentro del rango óptimo "
+                    f"PFR {pfr:.1f}% is within the optimal target "
                     f"({self.OPTIMAL_PFR_MIN}-{self.OPTIMAL_PFR_MAX}%)."
                 ),
             }
 
-        # ─── Evaluación de la Brecha VPIP - PFR ────────────────────
+        # ─── VPIP - PFR Gap Evaluation ───────────────────────────────
         gap = stats["gap"]
         if gap < self.OPTIMAL_GAP_MIN:
             diagnostics["gap"] = {
-                "status": "⚠️  BAJO",
+                "status": "⚠️  TOO LOW",
                 "message": (
-                    f"Brecha {gap:.1f}pp está por debajo del rango óptimo "
-                    f"({self.OPTIMAL_GAP_MIN}-{self.OPTIMAL_GAP_MAX}pp). "
-                    "Tu juego es muy agresivo con poco cold-calling. "
-                    "Considera incorporar más calls con manos especulativas "
-                    "(suited connectors, pocket pairs bajos)."
+                    f"Gap {gap:.1f} pp is below optimal "
+                    f"({self.OPTIMAL_GAP_MIN}-{self.OPTIMAL_GAP_MAX} pp). "
+                    "Hyper-aggressive play with almost no cold-calling. "
+                    "Consider flat-calling suited connectors and small pocket pairs "
+                    "when multiway pot odds justify it."
                 ),
             }
         elif gap > self.OPTIMAL_GAP_MAX:
             diagnostics["gap"] = {
-                "status": "⚠️  ALTO",
+                "status": "⚠️  TOO HIGH",
                 "message": (
-                    f"Brecha {gap:.1f}pp está por encima del rango óptimo "
-                    f"({self.OPTIMAL_GAP_MIN}-{self.OPTIMAL_GAP_MAX}pp). "
-                    "Estás haciendo demasiado cold-call. Convierte parte de "
-                    "tus calls en 3-bets para ganar más botes preflop."
+                    f"Gap {gap:.1f} pp is above optimal "
+                    f"({self.OPTIMAL_GAP_MIN}-{self.OPTIMAL_GAP_MAX} pp). "
+                    "Excessive cold-calling (passive leak). Rebalance by turning "
+                    "speculative flat-calls into 3-bets or disciplined folds."
                 ),
             }
         else:
             diagnostics["gap"] = {
-                "status": "✅ ÓPTIMO",
+                "status": "✅ OPTIMAL",
                 "message": (
-                    f"Brecha {gap:.1f}pp está dentro del rango óptimo "
-                    f"({self.OPTIMAL_GAP_MIN}-{self.OPTIMAL_GAP_MAX}pp)."
+                    f"Gap {gap:.1f} pp is within the optimal target "
+                    f"({self.OPTIMAL_GAP_MIN}-{self.OPTIMAL_GAP_MAX} pp)."
                 ),
             }
 
@@ -148,7 +146,7 @@ class PokerAnalyzer:
 
     def generate_report(self):
         """
-        Genera e imprime un reporte completo de estadísticas y diagnóstico.
+        Generates and prints a complete statistical report and leak diagnosis.
         """
         stats = self.calculate_stats()
         hands = self.db.get_all_hands()
@@ -158,11 +156,11 @@ class PokerAnalyzer:
         thin_sep = "─" * 72
 
         print(f"\n{separator}")
-        print("  ♠ ♥ ♦ ♣   REPORTE DE ESTADÍSTICAS PREFLOP   ♣ ♦ ♥ ♠")
+        print("  ♠ ♥ ♦ ♣   PREFLOP HERO — STRATEGY AUDIT REPORT   ♣ ♦ ♥ ♠")
         print(separator)
 
-        # ─── Tabla de manos individuales ────────────────────────────
-        print(f"\n{'N°':<4} {'HAND ID':<30} {'PLATAFORMA':<12} {'CARTAS':<10} {'VPIP':<6} {'PFR':<6}")
+        # ─── Individual Hand Breakdown ───────────────────────────────
+        print(f"\n{'#':<4} {'HAND ID':<30} {'PLATFORM':<12} {'CARDS':<10} {'VPIP':<6} {'PFR':<6}")
         print(thin_sep)
         for i, hand in enumerate(hands, 1):
             vpip_sym = "✔" if hand["vpip"] else "✘"
@@ -173,29 +171,29 @@ class PokerAnalyzer:
                 f"{cards:<10} {vpip_sym:<6} {pfr_sym:<6}"
             )
 
-        # ─── Estadísticas globales ──────────────────────────────────
+        # ─── Aggregate Metrics ───────────────────────────────────────
         print(f"\n{separator}")
-        print("  📊  ESTADÍSTICAS GLOBALES")
+        print("  📊  AGGREGATE METRICS")
         print(separator)
-        print(f"  Total de manos analizadas:  {stats['total_hands']}")
-        print(f"  Manos con VPIP:             {stats['vpip_count']}  ({stats['vpip_pct']:.2f}%)")
-        print(f"  Manos con PFR:              {stats['pfr_count']}  ({stats['pfr_pct']:.2f}%)")
-        print(f"  Brecha VPIP - PFR:          {stats['gap']:.2f}pp")
+        print(f"  Total Hands Analyzed:       {stats['total_hands']}")
+        print(f"  Hands with VPIP:            {stats['vpip_count']}  ({stats['vpip_pct']:.2f}%)")
+        print(f"  Hands with PFR:             {stats['pfr_count']}  ({stats['pfr_pct']:.2f}%)")
+        print(f"  PFR / VPIP Gap:             {stats['gap']:.2f} pp")
 
-        # ─── Rangos de referencia ───────────────────────────────────
+        # ─── Benchmark Targets ───────────────────────────────────────
         print(f"\n{separator}")
-        print("  📐  RANGOS ÓPTIMOS 6-MAX (REFERENCIA)")
+        print("  📐  6-MAX THEORETICAL BENCHMARKS")
         print(separator)
-        print(f"  VPIP:   {self.OPTIMAL_VPIP_MIN:.0f}% – {self.OPTIMAL_VPIP_MAX:.0f}%")
-        print(f"  PFR:    {self.OPTIMAL_PFR_MIN:.0f}% – {self.OPTIMAL_PFR_MAX:.0f}%")
-        print(f"  Brecha: {self.OPTIMAL_GAP_MIN:.0f}pp – {self.OPTIMAL_GAP_MAX:.0f}pp")
+        print(f"  Optimal VPIP:   {self.OPTIMAL_VPIP_MIN:.0f}% – {self.OPTIMAL_VPIP_MAX:.0f}%")
+        print(f"  Optimal PFR:    {self.OPTIMAL_PFR_MIN:.0f}% – {self.OPTIMAL_PFR_MAX:.0f}%")
+        print(f"  Optimal Gap:    {self.OPTIMAL_GAP_MIN:.0f} pp – {self.OPTIMAL_GAP_MAX:.0f} pp")
 
-        # ─── Diagnóstico ───────────────────────────────────────────
+        # ─── Strategy Diagnostics ────────────────────────────────────
         print(f"\n{separator}")
-        print("  🔍  DIAGNÓSTICO DE ESTRATEGIA")
+        print("  🔍  STRATEGY DIAGNOSTICS & LEAK DETECTION")
         print(separator)
 
-        labels = {"vpip": "VPIP", "pfr": "PFR", "gap": "BRECHA VPIP-PFR"}
+        labels = {"vpip": "VPIP", "pfr": "PFR", "gap": "GAP (VPIP − PFR)"}
         for key in ["vpip", "pfr", "gap"]:
             diag = diagnostics[key]
             print(f"\n  [{labels[key]}] {diag['status']}")
@@ -203,11 +201,10 @@ class PokerAnalyzer:
 
         print(f"\n{separator}")
 
-        # ─── Advertencia de muestra pequeña ─────────────────────────
+        # ─── Sample Size Advisory ────────────────────────────────────
         if stats["total_hands"] < 100:
             print(
-                f"\n  ⚠️  NOTA: La muestra es de solo {stats['total_hands']} mano(s). "
-                "Para resultados estadísticamente significativos, se recomienda "
-                "un mínimo de 1.000 manos."
+                f"\n  ⚠️  NOTE: Sample size is only {stats['total_hands']} hand(s). "
+                "For statistically reliable leak detection, a minimum of 1,000 hands is recommended."
             )
             print()

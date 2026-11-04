@@ -1,10 +1,10 @@
 """
-main.py — Script principal del analizador de manos de poker.
+main.py — Main CLI orchestrator for the Preflop Hero poker analyzer.
 
-Flujo:
-1. Parsea history.txt con HandParser.
-2. Inserta resultados en SQLite vía PokerDatabase.
-3. Genera reporte con PokerAnalyzer.
+Execution pipeline:
+1. Parses history.txt using HandParser.
+2. Inserts extracted hands into SQLite via PokerDatabase.
+3. Generates statistical & diagnostic report via PokerAnalyzer.
 """
 
 import os
@@ -15,29 +15,29 @@ from analyzer import PokerAnalyzer
 
 
 def main():
-    # Resolver rutas relativas al directorio del script
+    # Resolve paths relative to the script directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
     history_file = os.path.join(script_dir, "history.txt")
     db_file = os.path.join(script_dir, "poker_stats.db")
 
-    # ─── Paso 1: Parsear el archivo de historiales ──────────────────
-    print("🔄 Parseando historiales de manos...")
+    # ─── Step 1: Parse hand histories ──────────────────────────────
+    print("🔄 Parsing hand history files...")
 
     parser_engine = HandParser()
 
     if not os.path.exists(history_file):
-        print(f"❌ Error: No se encontró el archivo '{history_file}'.")
+        print(f"❌ Error: File not found '{history_file}'.")
         sys.exit(1)
 
     hands = parser_engine.parse_file(history_file)
-    print(f"   → Se encontraron {len(hands)} mano(s) en el archivo.")
+    print(f"   → Discovered {len(hands)} valid hand(s) in source file.")
 
     if not hands:
-        print("⚠️  No se encontraron manos válidas. Verifica el formato del archivo.")
+        print("⚠️  No valid hands found. Please verify the history format.")
         sys.exit(0)
 
-    # ─── Paso 2: Almacenar en la base de datos ─────────────────────
-    print(f"💾 Almacenando en base de datos: {db_file}")
+    # ─── Step 2: Persist into SQLite database ───────────────────────
+    print(f"💾 Storing records into SQLite: {db_file}")
 
     with PokerDatabase(db_file) as db:
         inserted = 0
@@ -56,9 +56,9 @@ def main():
             else:
                 duplicates += 1
 
-        print(f"   → Insertadas: {inserted} | Duplicadas (ignoradas): {duplicates}")
+        print(f"   → Inserted: {inserted} | Duplicates (safely ignored): {duplicates}")
 
-        # ─── Paso 3: Generar reporte ───────────────────────────────
+        # ─── Step 3: Run analysis & print report ────────────────────
         analyzer = PokerAnalyzer(db)
         analyzer.generate_report()
 

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Analizador de manos de poker — VPIP y PFR para Winamax y 888poker">
-    <title>Poker Preflop Analyzer — VPIP / PFR</title>
+    <meta name="description" content="Poker Preflop Analyzer — VPIP and PFR for Winamax and 888poker">
+    <title>Preflop Hero — Poker Strategy Analyzer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
@@ -705,9 +705,9 @@
     <main class="app-container">
         <!-- ─── HEADER ──────────────────────────────────────────── -->
         <header class="header">
-            <div class="header__badge">♠ Preflop Analyzer</div>
+            <div class="header__badge">♠ Preflop Hero</div>
             <h1 class="header__title">Poker VPIP / PFR</h1>
-            <p class="header__subtitle">Analiza tus historiales de Winamax y 888poker. Evalúa tu estrategia preflop contra los estándares óptimos 6-max.</p>
+            <p class="header__subtitle">Analyze your Winamax & 888poker hand histories. Audit your preflop strategy against 6-max GTO benchmarks.</p>
             <div class="header__suits">♠ ♥ ♦ ♣</div>
         </header>
 
@@ -715,19 +715,19 @@
         <section class="upload-section glass-card" id="upload-section">
             <div class="drop-zone" id="drop-zone">
                 <span class="drop-zone__icon">📂</span>
-                <p class="drop-zone__title">Arrastra tu archivo history.txt aquí</p>
-                <p class="drop-zone__hint">o haz clic para seleccionarlo</p>
+                <p class="drop-zone__title">Drag & drop your history.txt file here</p>
+                <p class="drop-zone__hint">or click to browse from computer</p>
                 <input type="file" id="file-input" accept=".txt,.log">
             </div>
 
-            <div class="or-divider"><span>o pega el historial</span></div>
+            <div class="or-divider"><span>or paste hand history</span></div>
 
             <textarea
                 class="paste-area"
                 id="paste-area"
-                placeholder="Pega aquí tus manos de Winamax o 888poker...
+                placeholder="Paste your Winamax or 888poker hands here...
 
-Ejemplo:
+Example:
 Winamax Poker - CashGame - HandId: #12345-1-1234567 ...
 Dealt to Hero [Ah Kd]
 *** PRE-FLOP ***
@@ -737,7 +737,7 @@ Hero raises 0.06€ to 0.06€
 
             <div style="text-align: center;">
                 <button class="btn-analyze" id="btn-analyze" onclick="analyzeHands()">
-                    <span>🔍</span> Analizar Manos
+                    <span>🔍</span> Analyze Hands
                 </button>
             </div>
         </section>
@@ -747,7 +747,7 @@ Hero raises 0.06€ to 0.06€
 
             <!-- GAUGES -->
             <div class="section-title">
-                <span class="section-title__icon">📊</span> Estadísticas Globales
+                <span class="section-title__icon">📊</span> Aggregate Statistics
             </div>
             <div class="gauges-grid" id="gauges-grid">
                 <!-- Filled by JS -->
@@ -756,7 +756,7 @@ Hero raises 0.06€ to 0.06€
             <!-- RANGE BARS -->
             <div class="glass-card range-bars" id="range-bars-card">
                 <div class="section-title">
-                    <span class="section-title__icon">📐</span> Tu Posición vs. Rango Óptimo 6-Max
+                    <span class="section-title__icon">📐</span> Your Position vs. 6-Max Optimal Target
                 </div>
                 <div id="range-bars-content"></div>
             </div>
@@ -764,7 +764,7 @@ Hero raises 0.06€ to 0.06€
             <!-- DIAGNOSTICS -->
             <div style="margin-top: 40px;">
                 <div class="section-title">
-                    <span class="section-title__icon">🔍</span> Diagnóstico de Estrategia
+                    <span class="section-title__icon">🔍</span> Strategy Diagnostics & Leak Detection
                 </div>
                 <div class="diagnostics" id="diagnostics"></div>
             </div>
@@ -778,7 +778,7 @@ Hero raises 0.06€ to 0.06€
             <!-- HANDS TABLE -->
             <div style="margin-top: 40px;">
                 <div class="section-title">
-                    <span class="section-title__icon">🃏</span> Detalle por Mano
+                    <span class="section-title__icon">🃏</span> Hand-by-Hand Breakdown
                 </div>
                 <div class="glass-card hands-table-wrapper">
                     <table class="hands-table" id="hands-table">
@@ -786,8 +786,8 @@ Hero raises 0.06€ to 0.06€
                             <tr>
                                 <th>#</th>
                                 <th>Hand ID</th>
-                                <th>Plataforma</th>
-                                <th>Cartas</th>
+                                <th>Platform</th>
+                                <th>Hole Cards</th>
                                 <th>VPIP</th>
                                 <th>PFR</th>
                             </tr>
@@ -800,13 +800,13 @@ Hero raises 0.06€ to 0.06€
             <!-- NEW ANALYSIS BTN -->
             <div style="text-align: center; margin-top: 32px;">
                 <button class="btn-analyze" onclick="resetAnalysis()" style="background: linear-gradient(135deg, var(--accent-sky), #0ea5e9);">
-                    <span>🔄</span> Nuevo Análisis
+                    <span>🔄</span> New Analysis
                 </button>
             </div>
         </section>
 
         <footer class="footer">
-            Poker Preflop Analyzer — Solo librerías estándar. Datos procesados localmente en tu navegador.
+            Preflop Hero — 100% Client-Side. No telemetry, your hand histories never leave your browser.
         </footer>
     </main>
 
@@ -924,7 +924,7 @@ function analyzeHands() {
 
     const hands = parseAllHands(text);
     if (hands.length === 0) {
-        alert('No se encontraron manos válidas. Verifica el formato del historial.');
+        alert('No valid hands found. Please verify the hand history format.');
         return;
     }
 
@@ -958,13 +958,13 @@ function renderGauges(total, vpipPct, pfrPct, gap, vpipCount, pfrCount) {
     const grid = document.getElementById('gauges-grid');
 
     grid.innerHTML = `
-        ${gaugeCard('vpip', 'VPIP', vpipPct, '%', `${vpipCount} de ${total} manos`, circumference)}
-        ${gaugeCard('pfr', 'PFR', pfrPct, '%', `${pfrCount} de ${total} manos`, circumference)}
-        ${gaugeCard('gap', 'Brecha', gap, 'pp', 'VPIP − PFR', circumference)}
+        ${gaugeCard('vpip', 'VPIP', vpipPct, '%', `${vpipCount} of ${total} hands`, circumference)}
+        ${gaugeCard('pfr', 'PFR', pfrPct, '%', `${pfrCount} of ${total} hands`, circumference)}
+        ${gaugeCard('gap', 'Gap', gap, 'pp', 'VPIP − PFR', circumference)}
         <div class="glass-card gauge-card gauge-card--hands">
             <div class="gauge-card__big-number">${total}</div>
-            <div class="gauge-card__label">Manos</div>
-            <div class="gauge-card__detail">Analizadas</div>
+            <div class="gauge-card__label">Hands</div>
+            <div class="gauge-card__detail">Analyzed</div>
         </div>
     `;
 
@@ -1008,9 +1008,9 @@ function animateGauge(id, pct, circ) {
 function renderRangeBars(vpipPct, pfrPct, gap) {
     const container = document.getElementById('range-bars-content');
     container.innerHTML = `
-        ${rangeBar('VPIP', 'vpip', vpipPct, OPTIMAL.vpip, '%', 60)}
-        ${rangeBar('PFR', 'pfr', pfrPct, OPTIMAL.pfr, '%', 60)}
-        ${rangeBar('Brecha VPIP−PFR', 'gap', gap, OPTIMAL.gap, 'pp', 30)}
+        ${rangeBar('VPIP (Voluntarily Put $ in Pot)', 'vpip', vpipPct, OPTIMAL.vpip, '%', 60)}
+        ${rangeBar('PFR (Preflop Raise)', 'pfr', pfrPct, OPTIMAL.pfr, '%', 60)}
+        ${rangeBar('PFR/VPIP Gap (Cold-Call Spread)', 'gap', gap, OPTIMAL.gap, 'pp', 30)}
     `;
 
     requestAnimationFrame(() => {
@@ -1030,7 +1030,7 @@ function rangeBar(label, type, value, optimal, unit, maxScale) {
     <div class="range-bar">
         <div class="range-bar__header">
             <span class="range-bar__label">${label}</span>
-            <span class="range-bar__values">Tu valor: ${value.toFixed(1)}${unit} · Óptimo: ${optimal.min}–${optimal.max}${unit}</span>
+            <span class="range-bar__values">Your value: ${value.toFixed(1)}${unit} · Optimal: ${optimal.min}–${optimal.max}${unit}</span>
         </div>
         <div class="range-bar__track">
             <div class="range-bar__optimal range-bar__optimal--${type}"
@@ -1053,35 +1053,35 @@ function renderDiagnostics(vpipPct, pfrPct, gap) {
     const container = document.getElementById('diagnostics');
     const items = [
         diagnose('VPIP', vpipPct, OPTIMAL.vpip, '%',
-            `Estás jugando demasiado tight. Considera abrir más manos en posición tardía (CO, BTN).`,
-            `Estás jugando demasiado loose. Reduce el rango desde posiciones tempranas (UTG, MP).`),
+            `You are playing too tight. Consider opening more hands from late position (Cutoff, Button).`,
+            `You are playing too loose. Tighten your opening range from early positions (UTG, Middle Position).`),
         diagnose('PFR', pfrPct, OPTIMAL.pfr, '%',
-            `Estás entrando muy pasivamente (cold-calling excesivo). Prioriza 3-bet sobre call.`,
-            `Demasiado agresivo preflop. Reduce open-raise desde posiciones tempranas.`),
-        diagnose('BRECHA VPIP−PFR', gap, OPTIMAL.gap, 'pp',
-            `Juego muy agresivo con poco cold-call. Incorpora más calls con suited connectors y pocket pairs bajos.`,
-            `Demasiado cold-call. Convierte parte de tus calls en 3-bets.`),
+            `Entering pots too passively (excessive flat-calling). Prioritize 3-betting over cold-calling with strong hands.`,
+            `Overly aggressive preflop. Reduce open-raise frequency from early seats.`),
+        diagnose('GAP (VPIP − PFR)', gap, OPTIMAL.gap, 'pp',
+            `Hyper-aggressive with almost no cold-calling. Consider flatting suited connectors and low pocket pairs with good implied odds.`,
+            `Excessive cold-calling (passive leak). Convert flat calls into 3-bets to take the initiative preflop.`),
     ];
     container.innerHTML = items.join('');
 }
 
 function diagnose(label, value, optimal, unit, lowMsg, highMsg) {
-    let status, icon, msg;
+    let status, icon, msg, statusLabel;
     if (value < optimal.min) {
-        status = 'low'; icon = '⚠️';
-        msg = `${label} ${value.toFixed(1)}${unit} está por debajo del rango óptimo (${optimal.min}–${optimal.max}${unit}). ${lowMsg}`;
+        status = 'low'; icon = '⚠️'; statusLabel = 'TOO LOW';
+        msg = `${label} ${value.toFixed(1)}${unit} is below the optimal range (${optimal.min}–${optimal.max}${unit}). ${lowMsg}`;
     } else if (value > optimal.max) {
-        status = 'high'; icon = '🔴';
-        msg = `${label} ${value.toFixed(1)}${unit} está por encima del rango óptimo (${optimal.min}–${optimal.max}${unit}). ${highMsg}`;
+        status = 'high'; icon = '🔴'; statusLabel = 'TOO HIGH';
+        msg = `${label} ${value.toFixed(1)}${unit} is above the optimal range (${optimal.min}–${optimal.max}${unit}). ${highMsg}`;
     } else {
-        status = 'optimal'; icon = '✅';
-        msg = `${label} ${value.toFixed(1)}${unit} está dentro del rango óptimo (${optimal.min}–${optimal.max}${unit}). ¡Buen trabajo!`;
+        status = 'optimal'; icon = '✅'; statusLabel = 'OPTIMAL';
+        msg = `${label} ${value.toFixed(1)}${unit} is within the optimal range (${optimal.min}–${optimal.max}${unit}). Well balanced!`;
     }
     return `
     <div class="diag-item diag-item--${status}">
         <span class="diag-item__icon">${icon}</span>
         <div>
-            <div class="diag-item__label">${label} — ${status === 'optimal' ? 'ÓPTIMO' : status === 'high' ? 'ALTO' : 'BAJO'}</div>
+            <div class="diag-item__label">${label} — ${statusLabel}</div>
             <div class="diag-item__msg">${msg}</div>
         </div>
     </div>`;
@@ -1121,7 +1121,7 @@ function renderCards(cardsStr) {
 
 function statBadge(val) {
     return val
-        ? `<span class="stat-badge stat-badge--yes">✔ Sí</span>`
+        ? `<span class="stat-badge stat-badge--yes">✔ Yes</span>`
         : `<span class="stat-badge stat-badge--no">✘ No</span>`;
 }
 
@@ -1130,7 +1130,7 @@ function renderSampleWarning(total) {
     const el = document.getElementById('sample-warning');
     const textEl = document.getElementById('sample-warning-text');
     if (total < 100) {
-        textEl.textContent = `La muestra es de solo ${total} mano(s). Para resultados estadísticamente significativos, se recomienda un mínimo de 1.000 manos.`;
+        textEl.textContent = `Sample size is only ${total} hand(s). For statistically reliable leak detection, a minimum of 1,000 hands is recommended.`;
         el.style.display = 'flex';
     } else {
         el.style.display = 'none';
