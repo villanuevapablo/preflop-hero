@@ -1,8 +1,8 @@
 """
-database.py — Módulo de persistencia SQLite para el analizador de poker.
+database.py — SQLite persistence layer for the Preflop Hero poker analyzer.
 
-Gestiona la conexión a la base de datos y las operaciones CRUD
-sobre la tabla hand_statistics.
+Manages the database connection and CRUD operations on the
+hand_statistics table.
 """
 
 import sqlite3
@@ -10,33 +10,33 @@ import os
 
 
 class PokerDatabase:
-    """Gestiona la base de datos SQLite de estadísticas de manos de poker."""
+    """Manages the SQLite database for poker hand statistics."""
 
     def __init__(self, db_path="poker_stats.db"):
         """
-        Inicializa la conexión a la base de datos.
+        Initializes the database connection parameters.
 
         Args:
-            db_path: Ruta del archivo de la base de datos SQLite.
+            db_path: Path to the SQLite database file.
         """
         self.db_path = db_path
         self.conn = None
 
     def __enter__(self):
-        """Abre la conexión y crea las tablas si no existen."""
+        """Opens database connection and creates tables if they do not exist."""
         self.conn = sqlite3.connect(self.db_path)
         self.conn.row_factory = sqlite3.Row
         self._create_tables()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Cierra la conexión a la base de datos."""
+        """Closes the database connection."""
         if self.conn:
             self.conn.close()
         return False
 
     def _create_tables(self):
-        """Crea el esquema relacional si no existe."""
+        """Creates the relational schema with duplicate prevention."""
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS hand_statistics (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,6 +45,7 @@ class PokerDatabase:
                 hero_cards  TEXT,
                 vpip        INTEGER NOT NULL,
                 pfr         INTEGER NOT NULL,
+                created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(hand_id, platform)
             )
         """)
@@ -52,17 +53,17 @@ class PokerDatabase:
 
     def insert_hand(self, hand_id, platform, hero_cards, vpip, pfr):
         """
-        Inserta una mano en la base de datos. Ignora duplicados.
+        Inserts a single hand record into the database. Safely ignores duplicates.
 
         Args:
-            hand_id:    Identificador único de la mano.
-            platform:   Plataforma de origen ('winamax' o '888poker').
-            hero_cards: Cartas del Hero (ej: 'Ah Kd').
-            vpip:       1 si Hero puso dinero voluntariamente, 0 si no.
-            pfr:        1 si Hero hizo raise preflop, 0 si no.
+            hand_id:    Unique hand identifier.
+            platform:   Source platform ('winamax' or '888poker').
+            hero_cards: Hero hole cards (e.g., 'Ah Kd').
+            vpip:       1 if Hero voluntarily put money in pot, 0 otherwise.
+            pfr:        1 if Hero raised preflop, 0 otherwise.
 
         Returns:
-            True si se insertó, False si ya existía (duplicado).
+            True if inserted, False if hand already existed (duplicate).
         """
         try:
             self.conn.execute(
@@ -79,10 +80,10 @@ class PokerDatabase:
 
     def get_all_hands(self):
         """
-        Obtiene todas las manos registradas.
+        Retrieves all recorded hand entries.
 
         Returns:
-            Lista de diccionarios con los datos de cada mano.
+            List of dictionaries containing each hand record.
         """
         cursor = self.conn.execute(
             "SELECT id, hand_id, platform, hero_cards, vpip, pfr FROM hand_statistics ORDER BY id"
@@ -91,11 +92,11 @@ class PokerDatabase:
 
     def get_stats(self):
         """
-        Calcula las estadísticas agregadas de VPIP y PFR.
+        Calculates aggregate VPIP, PFR, and cold-call gap statistics.
 
         Returns:
-            Diccionario con total_hands, vpip_count, pfr_count,
-            vpip_pct, pfr_pct y gap (brecha VPIP - PFR).
+            Dictionary containing total_hands, vpip_count, pfr_count,
+            vpip_pct, pfr_pct, and gap (VPIP - PFR spread).
         """
         cursor = self.conn.execute(
             """
@@ -125,6 +126,6 @@ class PokerDatabase:
         }
 
     def clear_all(self):
-        """Elimina todos los registros (útil para testing)."""
+        """Deletes all records (useful for automated testing)."""
         self.conn.execute("DELETE FROM hand_statistics")
         self.conn.commit()

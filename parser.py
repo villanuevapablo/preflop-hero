@@ -1,17 +1,17 @@
 """
-parser.py — Motor de extracción de historiales de manos de poker.
+parser.py — Poker hand history extraction engine.
 
-Parsea archivos de texto con manos de Winamax y 888poker,
-extrayendo hand_id, cartas del Hero, y los flags VPIP/PFR.
+Parses text files containing hand histories from Winamax and 888poker,
+extracting hand_id, Hero hole cards, and preflop VPIP/PFR flags.
 """
 
 import re
 
 
 class HandParser:
-    """Parser de historiales de manos de poker para Winamax y 888poker."""
+    """Parser for raw poker hand histories from Winamax and 888poker."""
 
-    # ─── Patrones Winamax ───────────────────────────────────────────────
+    # ─── Winamax Regular Expression Patterns ────────────────────────────
     RE_WINAMAX_HEADER = re.compile(
         r"Winamax Poker.*HandId:\s*#([\w\-]+)"
     )
@@ -27,7 +27,7 @@ class HandParser:
         re.MULTILINE,
     )
 
-    # ─── Patrones 888poker ──────────────────────────────────────────────
+    # ─── 888poker Regular Expression Patterns ───────────────────────────
     RE_888_HEADER = re.compile(
         r"\*{5}\s*888poker Hand History for Game (\d+)\s*\*{5}"
     )
@@ -45,13 +45,13 @@ class HandParser:
 
     def parse_file(self, filepath):
         """
-        Parsea un archivo completo de historiales de manos.
+        Parses an entire hand history file.
 
         Args:
-            filepath: Ruta al archivo de texto con los historiales.
+            filepath: Path to the text file containing raw hand histories.
 
         Returns:
-            Lista de diccionarios, uno por mano, con las claves:
+            List of dictionaries, one per valid hand, containing keys:
             hand_id, platform, hero_cards, vpip, pfr.
         """
         with open(filepath, "r", encoding="utf-8") as f:
@@ -81,15 +81,13 @@ class HandParser:
 
     def _split_hands(self, text):
         """
-        Separa el texto completo en bloques individuales por mano.
+        Splits complete text into individual hand blocks.
 
-        Detecta el inicio de cada mano por las cabeceras de Winamax o 888poker
-        y divide el texto en segmentos.
+        Detects the beginning of each hand by matching platform-specific headers.
 
         Returns:
-            Lista de strings, cada uno conteniendo una mano completa.
+            List of strings, each containing a complete hand.
         """
-        # Patrón que detecta el inicio de una mano de cualquier plataforma
         split_pattern = re.compile(
             r"(?=Winamax Poker -|\*{5}\s*888poker Hand History)"
         )
@@ -98,10 +96,10 @@ class HandParser:
 
     def _detect_platform(self, hand_text):
         """
-        Identifica la plataforma de una mano individual.
+        Identifies the source poker platform of an individual hand.
 
         Returns:
-            'winamax', '888poker', o None si no se reconoce.
+            'winamax', '888poker', or None if unrecognized.
         """
         if hand_text.strip().startswith("Winamax Poker"):
             return "winamax"
@@ -111,23 +109,20 @@ class HandParser:
 
     def _parse_winamax(self, hand_text):
         """
-        Extrae los datos de una mano de Winamax.
+        Extracts hand data from a Winamax hand block.
 
         Returns:
-            Diccionario con hand_id, platform, hero_cards, vpip, pfr,
-            o None si no se puede parsear.
+            Dictionary with hand_id, platform, hero_cards, vpip, pfr,
+            or None if extraction fails.
         """
-        # Extraer hand_id
         header_match = self.RE_WINAMAX_HEADER.search(hand_text)
         if not header_match:
             return None
         hand_id = header_match.group(1)
 
-        # Extraer cartas del Hero
         dealt_match = self.RE_WINAMAX_DEALT.search(hand_text)
         hero_cards = dealt_match.group(1).strip() if dealt_match else None
 
-        # Extraer acciones preflop
         vpip, pfr = self._evaluate_preflop_actions(
             hand_text,
             self.RE_WINAMAX_PREFLOP_SECTION,
@@ -144,27 +139,23 @@ class HandParser:
 
     def _parse_888poker(self, hand_text):
         """
-        Extrae los datos de una mano de 888poker.
+        Extracts hand data from an 888poker hand block.
 
         Returns:
-            Diccionario con hand_id, platform, hero_cards, vpip, pfr,
-            o None si no se puede parsear.
+            Dictionary with hand_id, platform, hero_cards, vpip, pfr,
+            or None if extraction fails.
         """
-        # Extraer hand_id
         header_match = self.RE_888_HEADER.search(hand_text)
         if not header_match:
             return None
         hand_id = header_match.group(1)
 
-        # Extraer cartas del Hero
         dealt_match = self.RE_888_DEALT.search(hand_text)
         hero_cards = None
         if dealt_match:
-            # Normalizar formato: "Qd, Qs" → "Qd Qs"
             raw_cards = dealt_match.group(1).strip()
             hero_cards = raw_cards.replace(",", "").replace("  ", " ").strip()
 
-        # Extraer acciones preflop
         vpip, pfr = self._evaluate_preflop_actions(
             hand_text,
             self.RE_888_PREFLOP_SECTION,
@@ -181,19 +172,19 @@ class HandParser:
 
     def _evaluate_preflop_actions(self, hand_text, section_regex, action_regex):
         """
-        Evalúa las acciones del Hero en la sección preflop.
+        Evaluates Hero's preflop actions.
 
-        VPIP = 1 si Hero hace call, raise o bet (acción voluntaria).
-        PFR  = 1 si Hero hace raise.
-        Postear ciegas NO cuenta como VPIP.
+        VPIP = 1 if Hero voluntarily calls, raises, or bets.
+        PFR  = 1 if Hero raises.
+        Posting blinds (ante / small blind / big blind) does NOT count toward VPIP.
 
         Args:
-            hand_text:     Texto completo de la mano.
-            section_regex: Regex para extraer la sección preflop.
-            action_regex:  Regex para detectar acciones del Hero.
+            hand_text:     Full raw hand text.
+            section_regex: Regex extracting the preflop section.
+            action_regex:  Regex detecting Hero actions.
 
         Returns:
-            Tupla (vpip, pfr) con valores 0 o 1.
+            Tuple (vpip, pfr) with integer flags (0 or 1).
         """
         vpip = 0
         pfr = 0
@@ -203,8 +194,6 @@ class HandParser:
             return vpip, pfr
 
         preflop_text = section_match.group(1)
-
-        # Buscar todas las acciones del Hero en la sección preflop
         actions = action_regex.findall(preflop_text)
 
         for action in actions:
