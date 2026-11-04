@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Analizador de manos de poker — VPIP y PFR para Winamax y 888poker">
+    <title>Poker Preflop Analyzer — VPIP / PFR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* ─── RESET & VARIABLES ──────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --bg-card-hover: rgba(30, 41, 59, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.06);
+            --glass-shine: rgba(255, 255, 255, 0.03);
+
+            --accent-emerald: #34d399;
+            --accent-emerald-dim: rgba(52, 211, 153, 0.15);
+            --accent-sky: #38bdf8;
+            --accent-sky-dim: rgba(56, 189, 248, 0.15);
+            --accent-amber: #fbbf24;
+            --accent-amber-dim: rgba(251, 191, 36, 0.15);
+            --accent-rose: #fb7185;
+            --accent-rose-dim: rgba(251, 113, 133, 0.15);
+            --accent-violet: #a78bfa;
+            --accent-violet-dim: rgba(167, 139, 250, 0.15);
+
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+
+            --suit-hearts: #ef4444;
+            --suit-diamonds: #3b82f6;
+            --suit-clubs: #22c55e;
+            --suit-spades: #f1f5f9;
+
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+
+            --shadow-card: 0 4px 30px rgba(0, 0, 0, 0.4);
+            --shadow-glow-emerald: 0 0 40px rgba(52, 211, 153, 0.12);
+            --shadow-glow-sky: 0 0 40px rgba(56, 189, 248, 0.12);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ─── ANIMATED BACKGROUND ────────────────────────────────── */
+        .bg-gradient {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 10%, rgba(52, 211, 153, 0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 80% 80%, rgba(56, 189, 248, 0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 50% 50%, rgba(167, 139, 250, 0.04) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        /* ─── LAYOUT ─────────────────────────────────────────────── */
+        .app-container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+        }
+
+        /* ─── HEADER ─────────────────────────────────────────────── */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .header__badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: var(--accent-emerald-dim);
+            border: 1px solid rgba(52, 211, 153, 0.2);
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent-emerald);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+        }
+
+        .header__title {
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 900;
+            letter-spacing: -1.5px;
+            line-height: 1.1;
+            background: linear-gradient(135deg, #f1f5f9 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+        }
+
+        .header__subtitle {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .header__suits {
+            font-size: 1.5rem;
+            letter-spacing: 6px;
+            margin-top: 16px;
+            opacity: 0.4;
+        }
+
+        /* ─── GLASS CARD ─────────────────────────────────────────── */
+        .glass-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            padding: 32px;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* ─── DROP ZONE ──────────────────────────────────────────── */
+        .upload-section {
+            margin-bottom: 40px;
+        }
+
+        .drop-zone {
+            position: relative;
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-lg);
+            padding: 48px 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.35s ease;
+            background: rgba(17, 24, 39, 0.4);
+            overflow: hidden;
+        }
+
+        .drop-zone::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(52, 211, 153, 0.03), rgba(56, 189, 248, 0.03));
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: var(--accent-emerald);
+            background: rgba(52, 211, 153, 0.04);
+        }
+
+        .drop-zone:hover::before, .drop-zone.drag-over::before {
+            opacity: 1;
+        }
+
+        .drop-zone__icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            display: block;
+            opacity: 0.8;
+        }
+
+        .drop-zone__title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .drop-zone__hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .drop-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* ─── OR DIVIDER ─────────────────────────────────────────── */
+        .or-divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .or-divider::before, .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--glass-border);
+        }
+
+        .or-divider span {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* ─── TEXTAREA ───────────────────────────────────────────── */
+        .paste-area {
+            width: 100%;
+            min-height: 200px;
+            max-height: 400px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .paste-area::placeholder { color: var(--text-muted); }
+        .paste-area:focus { border-color: var(--accent-sky); }
+
+        /* ─── ANALYZE BUTTON ─────────────────────────────────────── */
+        .btn-analyze {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 24px;
+            padding: 14px 36px;
+            background: linear-gradient(135deg, var(--accent-emerald), #10b981);
+            color: #0a0e1a;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 24px rgba(52, 211, 153, 0.25);
+        }
+
+        .btn-analyze:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(52, 211, 153, 0.35);
+        }
+
+        .btn-analyze:active { transform: translateY(0); }
+
+        .btn-analyze:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ─── RESULTS SECTION ────────────────────────────────────── */
+        .results-section {
+            display: none;
+            animation: fadeInUp 0.6s ease;
+        }
+
+        .results-section.visible { display: block; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title__icon { font-size: 1.2rem; }
+
+        /* ─── STAT GAUGES ────────────────────────────────────────── */
+        .gauges-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .gauge-card {
+            text-align: center;
+            padding: 32px 24px;
+        }
+
+        .gauge-card--vpip { border-top: 3px solid var(--accent-emerald); }
+        .gauge-card--pfr { border-top: 3px solid var(--accent-sky); }
+        .gauge-card--gap { border-top: 3px solid var(--accent-violet); }
+        .gauge-card--hands { border-top: 3px solid var(--accent-amber); }
+
+        .gauge-ring {
+            position: relative;
+            width: 130px;
+            height: 130px;
+            margin: 0 auto 20px;
+        }
+
+        .gauge-ring svg {
+            transform: rotate(-90deg);
+            width: 130px;
+            height: 130px;
+        }
+
+        .gauge-ring__bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 8;
+        }
+
+        .gauge-ring__fill {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .gauge-ring__fill--vpip { stroke: var(--accent-emerald); filter: drop-shadow(0 0 8px rgba(52,211,153,0.4)); }
+        .gauge-ring__fill--pfr { stroke: var(--accent-sky); filter: drop-shadow(0 0 8px rgba(56,189,248,0.4)); }
+        .gauge-ring__fill--gap { stroke: var(--accent-violet); filter: drop-shadow(0 0 8px rgba(167,139,250,0.4)); }
+
+        .gauge-ring__value {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gauge-ring__number {
+            font-size: 1.9rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        .gauge-ring__unit {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .gauge-card__label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .gauge-card__detail {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .gauge-card__big-number {
+            font-size: 3rem;
+            font-weight: 900;
+            color: var(--accent-amber);
+            margin-bottom: 8px;
+        }
+
+        /* ─── OPTIMAL RANGE BAR ──────────────────────────────────── */
+        .range-bars {
+            margin-bottom: 40px;
+        }
+
+        .range-bar {
+            margin-bottom: 24px;
+        }
+
+        .range-bar__header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .range-bar__label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .range-bar__values {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .range-bar__track {
+            position: relative;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 999px;
+            overflow: visible;
+            border: 1px solid var(--glass-border);
+        }
+
+        .range-bar__optimal {
+            position: absolute;
+            top: 2px;
+            bottom: 2px;
+            border-radius: 999px;
+            opacity: 0.18;
+        }
+
+        .range-bar__optimal--vpip { background: var(--accent-emerald); }
+        .range-bar__optimal--pfr { background: var(--accent-sky); }
+        .range-bar__optimal--gap { background: var(--accent-violet); }
+
+        .range-bar__marker {
+            position: absolute;
+            top: 50%;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            border: 3px solid;
+            box-shadow: 0 0 12px;
+            transition: left 1s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2;
+        }
+
+        .range-bar__marker--vpip {
+            background: var(--accent-emerald);
+            border-color: var(--bg-primary);
+            box-shadow: 0 0 12px rgba(52,211,153,0.5);
+        }
+
+        .range-bar__marker--pfr {
+            background: var(--accent-sky);
+            border-color: var(--bg-primary);
+            box-shadow: 0 0 12px rgba(56,189,248,0.5);
+        }
+
+        .range-bar__marker--gap {
+            background: var(--accent-violet);
+            border-color: var(--bg-primary);
+            box-shadow: 0 0 12px rgba(167,139,250,0.5);
+        }
+
+        /* ─── DIAGNOSTICS ────────────────────────────────────────── */
+        .diagnostics {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .diag-item {
+            display: flex;
+            gap: 16px;
+            padding: 20px 24px;
+            border-radius: var(--radius-md);
+            border-left: 4px solid;
+        }
+
+        .diag-item--optimal {
+            background: rgba(52, 211, 153, 0.06);
+            border-color: var(--accent-emerald);
+        }
+
+        .diag-item--high {
+            background: rgba(251, 113, 133, 0.06);
+            border-color: var(--accent-rose);
+        }
+
+        .diag-item--low {
+            background: rgba(251, 191, 36, 0.06);
+            border-color: var(--accent-amber);
+        }
+
+        .diag-item__icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+
+        .diag-item__label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .diag-item--optimal .diag-item__label { color: var(--accent-emerald); }
+        .diag-item--high .diag-item__label { color: var(--accent-rose); }
+        .diag-item--low .diag-item__label { color: var(--accent-amber); }
+
+        .diag-item__msg {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* ─── HANDS TABLE ────────────────────────────────────────── */
+        .hands-table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 40px;
+        }
+
+        .hands-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 6px;
+        }
+
+        .hands-table th {
+            text-align: left;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            padding: 8px 16px;
+        }
+
+        .hands-table td {
+            padding: 14px 16px;
+            font-size: 0.88rem;
+            background: rgba(255, 255, 255, 0.02);
+            transition: background 0.2s ease;
+        }
+
+        .hands-table tr:hover td {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .hands-table td:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+        .hands-table td:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+
+        .hands-table__id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+
+        .platform-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .platform-badge--winamax {
+            background: rgba(251, 191, 36, 0.12);
+            color: var(--accent-amber);
+        }
+
+        .platform-badge--888poker {
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--accent-sky);
+        }
+
+        /* ─── POKER CARDS ────────────────────────────────────────── */
+        .poker-cards {
+            display: flex;
+            gap: 4px;
+        }
+
+        .poker-card {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 50px;
+            background: linear-gradient(145deg, #ffffff, #e8e8e8);
+            border-radius: 5px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            font-weight: 700;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            flex-direction: column;
+            gap: 0;
+            line-height: 1;
+        }
+
+        .poker-card__rank {
+            font-size: 0.85rem;
+            font-weight: 800;
+        }
+
+        .poker-card__suit { font-size: 0.75rem; }
+
+        .poker-card--hearts .poker-card__rank,
+        .poker-card--hearts .poker-card__suit { color: #dc2626; }
+
+        .poker-card--diamonds .poker-card__rank,
+        .poker-card--diamonds .poker-card__suit { color: #2563eb; }
+
+        .poker-card--clubs .poker-card__rank,
+        .poker-card--clubs .poker-card__suit { color: #16a34a; }
+
+        .poker-card--spades .poker-card__rank,
+        .poker-card--spades .poker-card__suit { color: #1e293b; }
+
+        /* ─── VPIP/PFR BADGES ────────────────────────────────────── */
+        .stat-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .stat-badge--yes {
+            background: rgba(52, 211, 153, 0.12);
+            color: var(--accent-emerald);
+        }
+
+        .stat-badge--no {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-muted);
+        }
+
+        /* ─── SAMPLE WARNING ─────────────────────────────────────── */
+        .sample-warning {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 16px 20px;
+            background: rgba(251, 191, 36, 0.06);
+            border: 1px solid rgba(251, 191, 36, 0.15);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .sample-warning__icon { font-size: 1.2rem; flex-shrink: 0; }
+
+        /* ─── FOOTER ─────────────────────────────────────────────── */
+        .footer {
+            text-align: center;
+            padding: 40px 0 0;
+            border-top: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            font-size: 0.78rem;
+        }
+
+        /* ─── RESPONSIVE ─────────────────────────────────────────── */
+        @media (max-width: 640px) {
+            .app-container { padding: 24px 16px 60px; }
+            .glass-card { padding: 20px; }
+            .gauges-grid { grid-template-columns: 1fr 1fr; }
+            .gauge-ring { width: 100px; height: 100px; }
+            .gauge-ring svg { width: 100px; height: 100px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
+
+    <main class="app-container">
+        <!-- ─── HEADER ──────────────────────────────────────────── -->
+        <header class="header">
+            <div class="header__badge">♠ Preflop Analyzer</div>
+            <h1 class="header__title">Poker VPIP / PFR</h1>
+            <p class="header__subtitle">Analiza tus historiales de Winamax y 888poker. Evalúa tu estrategia preflop contra los estándares óptimos 6-max.</p>
+            <div class="header__suits">♠ ♥ ♦ ♣</div>
+        </header>
+
+        <!-- ─── UPLOAD SECTION ──────────────────────────────────── -->
+        <section class="upload-section glass-card" id="upload-section">
+            <div class="drop-zone" id="drop-zone">
+                <span class="drop-zone__icon">📂</span>
+                <p class="drop-zone__title">Arrastra tu archivo history.txt aquí</p>
+                <p class="drop-zone__hint">o haz clic para seleccionarlo</p>
+                <input type="file" id="file-input" accept=".txt,.log">
+            </div>
+
+            <div class="or-divider"><span>o pega el historial</span></div>
+
+            <textarea
+                class="paste-area"
+                id="paste-area"
+                placeholder="Pega aquí tus manos de Winamax o 888poker...
+
+Ejemplo:
+Winamax Poker - CashGame - HandId: #12345-1-1234567 ...
+Dealt to Hero [Ah Kd]
+*** PRE-FLOP ***
+Hero raises 0.06€ to 0.06€
+..."
+            ></textarea>
+
+            <div style="text-align: center;">
+                <button class="btn-analyze" id="btn-analyze" onclick="analyzeHands()">
+                    <span>🔍</span> Analizar Manos
+                </button>
+            </div>
+        </section>
+
+        <!-- ─── RESULTS ─────────────────────────────────────────── -->
+        <section class="results-section" id="results-section">
+
+            <!-- GAUGES -->
+            <div class="section-title">
+                <span class="section-title__icon">📊</span> Estadísticas Globales
+            </div>
+            <div class="gauges-grid" id="gauges-grid">
+                <!-- Filled by JS -->
+            </div>
+
+            <!-- RANGE BARS -->
+            <div class="glass-card range-bars" id="range-bars-card">
+                <div class="section-title">
+                    <span class="section-title__icon">📐</span> Tu Posición vs. Rango Óptimo 6-Max
+                </div>
+                <div id="range-bars-content"></div>
+            </div>
+
+            <!-- DIAGNOSTICS -->
+            <div style="margin-top: 40px;">
+                <div class="section-title">
+                    <span class="section-title__icon">🔍</span> Diagnóstico de Estrategia
+                </div>
+                <div class="diagnostics" id="diagnostics"></div>
+            </div>
+
+            <!-- SAMPLE WARNING -->
+            <div class="sample-warning" id="sample-warning" style="display:none; margin-bottom: 40px;">
+                <span class="sample-warning__icon">⚠️</span>
+                <span id="sample-warning-text"></span>
+            </div>
+
+            <!-- HANDS TABLE -->
+            <div style="margin-top: 40px;">
+                <div class="section-title">
+                    <span class="section-title__icon">🃏</span> Detalle por Mano
+                </div>
+                <div class="glass-card hands-table-wrapper">
+                    <table class="hands-table" id="hands-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Hand ID</th>
+                                <th>Plataforma</th>
+                                <th>Cartas</th>
+                                <th>VPIP</th>
+                                <th>PFR</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hands-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- NEW ANALYSIS BTN -->
+            <div style="text-align: center; margin-top: 32px;">
+                <button class="btn-analyze" onclick="resetAnalysis()" style="background: linear-gradient(135deg, var(--accent-sky), #0ea5e9);">
+                    <span>🔄</span> Nuevo Análisis
+                </button>
+            </div>
+        </section>
+
+        <footer class="footer">
+            Poker Preflop Analyzer — Solo librerías estándar. Datos procesados localmente en tu navegador.
+        </footer>
+    </main>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  PARSER ENGINE (JavaScript port)
+// ═══════════════════════════════════════════════════════════════════
+
+const OPTIMAL = {
+    vpip: { min: 20, max: 27 },
+    pfr:  { min: 17, max: 23 },
+    gap:  { min: 3,  max: 6  },
+};
+
+function splitHands(text) {
+    const parts = text.split(/(?=Winamax Poker -|\*{5}\s*888poker Hand History)/);
+    return parts.filter(p => p.trim().length > 0);
+}
+
+function detectPlatform(handText) {
+    if (handText.trim().startsWith('Winamax Poker')) return 'winamax';
+    if (handText.includes('888poker Hand History')) return '888poker';
+    return null;
+}
+
+function parseWinamax(handText) {
+    const headerMatch = handText.match(/Winamax Poker.*HandId:\s*#([\w\-]+)/);
+    if (!headerMatch) return null;
+
+    const dealtMatch = handText.match(/Dealt to Hero \[([^\]]+)\]/);
+    const heroCards = dealtMatch ? dealtMatch[1].trim() : null;
+
+    const sectionMatch = handText.match(/\*\*\* PRE-FLOP \*\*\*(.*?)(?:\*\*\* FLOP \*\*\*|\*\*\* SUMMARY \*\*\*)/s);
+    const { vpip, pfr } = evaluateActions(sectionMatch ? sectionMatch[1] : '');
+
+    return { hand_id: headerMatch[1], platform: 'winamax', hero_cards: heroCards, vpip, pfr };
+}
+
+function parse888(handText) {
+    const headerMatch = handText.match(/\*{5}\s*888poker Hand History for Game (\d+)\s*\*{5}/);
+    if (!headerMatch) return null;
+
+    const dealtMatch = handText.match(/Dealt to Hero \[\s*([^\]]+)\s*\]/);
+    let heroCards = null;
+    if (dealtMatch) {
+        heroCards = dealtMatch[1].replace(/,/g, '').replace(/\s+/g, ' ').trim();
+    }
+
+    const sectionMatch = handText.match(/\*\* Dealing down cards \*\*(.*?)(?:\*\* Dealing Flop \*\*|\*\*\* SUMMARY \*\*\*)/s);
+    const { vpip, pfr } = evaluateActions(sectionMatch ? sectionMatch[1] : '');
+
+    return { hand_id: headerMatch[1], platform: '888poker', hero_cards: heroCards, vpip, pfr };
+}
+
+function evaluateActions(preflopText) {
+    let vpip = 0, pfr = 0;
+    const actions = preflopText.match(/^Hero\s+(raises|calls|bets|checks|folds)/gm) || [];
+    for (const line of actions) {
+        const action = line.replace(/^Hero\s+/, '').toLowerCase();
+        if (action === 'calls' || action === 'bets') vpip = 1;
+        if (action === 'raises') { vpip = 1; pfr = 1; }
+    }
+    return { vpip, pfr };
+}
+
+function parseAllHands(text) {
+    const rawHands = splitHands(text);
+    const results = [];
+    for (const h of rawHands) {
+        const platform = detectPlatform(h);
+        if (!platform) continue;
+        const parsed = platform === 'winamax' ? parseWinamax(h) : parse888(h);
+        if (parsed) results.push(parsed);
+    }
+    return results;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  UI LOGIC
+// ═══════════════════════════════════════════════════════════════════
+
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const pasteArea = document.getElementById('paste-area');
+
+// Drag & drop
+['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, ev => {
+    ev.preventDefault(); dropZone.classList.add('drag-over');
+}));
+['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, ev => {
+    ev.preventDefault(); dropZone.classList.remove('drag-over');
+}));
+
+dropZone.addEventListener('drop', ev => {
+    const file = ev.dataTransfer.files[0];
+    if (file) readFile(file);
+});
+
+fileInput.addEventListener('change', ev => {
+    const file = ev.target.files[0];
+    if (file) readFile(file);
+});
+
+function readFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+        pasteArea.value = e.target.result;
+    };
+    reader.readAsText(file, 'utf-8');
+}
+
+function analyzeHands() {
+    const text = pasteArea.value.trim();
+    if (!text) return;
+
+    const hands = parseAllHands(text);
+    if (hands.length === 0) {
+        alert('No se encontraron manos válidas. Verifica el formato del historial.');
+        return;
+    }
+
+    const total = hands.length;
+    const vpipCount = hands.filter(h => h.vpip).length;
+    const pfrCount  = hands.filter(h => h.pfr).length;
+    const vpipPct = (vpipCount / total * 100);
+    const pfrPct  = (pfrCount / total * 100);
+    const gap = vpipPct - pfrPct;
+
+    renderGauges(total, vpipPct, pfrPct, gap, vpipCount, pfrCount);
+    renderRangeBars(vpipPct, pfrPct, gap);
+    renderDiagnostics(vpipPct, pfrPct, gap);
+    renderHandsTable(hands);
+    renderSampleWarning(total);
+
+    document.getElementById('results-section').classList.add('visible');
+    document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function resetAnalysis() {
+    document.getElementById('results-section').classList.remove('visible');
+    pasteArea.value = '';
+    fileInput.value = '';
+    document.getElementById('upload-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ─── RENDER GAUGES ──────────────────────────────────────────────
+function renderGauges(total, vpipPct, pfrPct, gap, vpipCount, pfrCount) {
+    const circumference = 2 * Math.PI * 52;
+    const grid = document.getElementById('gauges-grid');
+
+    grid.innerHTML = `
+        ${gaugeCard('vpip', 'VPIP', vpipPct, '%', `${vpipCount} de ${total} manos`, circumference)}
+        ${gaugeCard('pfr', 'PFR', pfrPct, '%', `${pfrCount} de ${total} manos`, circumference)}
+        ${gaugeCard('gap', 'Brecha', gap, 'pp', 'VPIP − PFR', circumference)}
+        <div class="glass-card gauge-card gauge-card--hands">
+            <div class="gauge-card__big-number">${total}</div>
+            <div class="gauge-card__label">Manos</div>
+            <div class="gauge-card__detail">Analizadas</div>
+        </div>
+    `;
+
+    // Animate gauges
+    requestAnimationFrame(() => {
+        animateGauge('gauge-vpip', vpipPct, circumference);
+        animateGauge('gauge-pfr', pfrPct, circumference);
+        animateGauge('gauge-gap', Math.min(gap, 100), circumference);
+    });
+}
+
+function gaugeCard(type, label, value, unit, detail, circ) {
+    return `
+    <div class="glass-card gauge-card gauge-card--${type}">
+        <div class="gauge-ring">
+            <svg viewBox="0 0 120 120">
+                <circle class="gauge-ring__bg" cx="60" cy="60" r="52"/>
+                <circle class="gauge-ring__fill gauge-ring__fill--${type}" id="gauge-${type}"
+                    cx="60" cy="60" r="52"
+                    stroke-dasharray="${circ}"
+                    stroke-dashoffset="${circ}"/>
+            </svg>
+            <div class="gauge-ring__value">
+                <span class="gauge-ring__number">${value.toFixed(1)}</span>
+                <span class="gauge-ring__unit">${unit}</span>
+            </div>
+        </div>
+        <div class="gauge-card__label">${label}</div>
+        <div class="gauge-card__detail">${detail}</div>
+    </div>`;
+}
+
+function animateGauge(id, pct, circ) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const offset = circ - (circ * Math.min(pct, 100) / 100);
+    setTimeout(() => { el.style.strokeDashoffset = offset; }, 100);
+}
+
+// ─── RENDER RANGE BARS ──────────────────────────────────────────
+function renderRangeBars(vpipPct, pfrPct, gap) {
+    const container = document.getElementById('range-bars-content');
+    container.innerHTML = `
+        ${rangeBar('VPIP', 'vpip', vpipPct, OPTIMAL.vpip, '%', 60)}
+        ${rangeBar('PFR', 'pfr', pfrPct, OPTIMAL.pfr, '%', 60)}
+        ${rangeBar('Brecha VPIP−PFR', 'gap', gap, OPTIMAL.gap, 'pp', 30)}
+    `;
+
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            setMarker('marker-vpip', vpipPct, 60);
+            setMarker('marker-pfr', pfrPct, 60);
+            setMarker('marker-gap', gap, 30);
+        }, 200);
+    });
+}
+
+function rangeBar(label, type, value, optimal, unit, maxScale) {
+    const leftPct = (optimal.min / maxScale * 100).toFixed(1);
+    const widthPct = ((optimal.max - optimal.min) / maxScale * 100).toFixed(1);
+
+    return `
+    <div class="range-bar">
+        <div class="range-bar__header">
+            <span class="range-bar__label">${label}</span>
+            <span class="range-bar__values">Tu valor: ${value.toFixed(1)}${unit} · Óptimo: ${optimal.min}–${optimal.max}${unit}</span>
+        </div>
+        <div class="range-bar__track">
+            <div class="range-bar__optimal range-bar__optimal--${type}"
+                 style="left:${leftPct}%; width:${widthPct}%"></div>
+            <div class="range-bar__marker range-bar__marker--${type}" id="marker-${type}"
+                 style="left: 0%"></div>
+        </div>
+    </div>`;
+}
+
+function setMarker(id, value, maxScale) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const pct = Math.min(Math.max(value / maxScale * 100, 2), 98);
+    el.style.left = pct + '%';
+}
+
+// ─── RENDER DIAGNOSTICS ─────────────────────────────────────────
+function renderDiagnostics(vpipPct, pfrPct, gap) {
+    const container = document.getElementById('diagnostics');
+    const items = [
+        diagnose('VPIP', vpipPct, OPTIMAL.vpip, '%',
+            `Estás jugando demasiado tight. Considera abrir más manos en posición tardía (CO, BTN).`,
+            `Estás jugando demasiado loose. Reduce el rango desde posiciones tempranas (UTG, MP).`),
+        diagnose('PFR', pfrPct, OPTIMAL.pfr, '%',
+            `Estás entrando muy pasivamente (cold-calling excesivo). Prioriza 3-bet sobre call.`,
+            `Demasiado agresivo preflop. Reduce open-raise desde posiciones tempranas.`),
+        diagnose('BRECHA VPIP−PFR', gap, OPTIMAL.gap, 'pp',
+            `Juego muy agresivo con poco cold-call. Incorpora más calls con suited connectors y pocket pairs bajos.`,
+            `Demasiado cold-call. Convierte parte de tus calls en 3-bets.`),
+    ];
+    container.innerHTML = items.join('');
+}
+
+function diagnose(label, value, optimal, unit, lowMsg, highMsg) {
+    let status, icon, msg;
+    if (value < optimal.min) {
+        status = 'low'; icon = '⚠️';
+        msg = `${label} ${value.toFixed(1)}${unit} está por debajo del rango óptimo (${optimal.min}–${optimal.max}${unit}). ${lowMsg}`;
+    } else if (value > optimal.max) {
+        status = 'high'; icon = '🔴';
+        msg = `${label} ${value.toFixed(1)}${unit} está por encima del rango óptimo (${optimal.min}–${optimal.max}${unit}). ${highMsg}`;
+    } else {
+        status = 'optimal'; icon = '✅';
+        msg = `${label} ${value.toFixed(1)}${unit} está dentro del rango óptimo (${optimal.min}–${optimal.max}${unit}). ¡Buen trabajo!`;
+    }
+    return `
+    <div class="diag-item diag-item--${status}">
+        <span class="diag-item__icon">${icon}</span>
+        <div>
+            <div class="diag-item__label">${label} — ${status === 'optimal' ? 'ÓPTIMO' : status === 'high' ? 'ALTO' : 'BAJO'}</div>
+            <div class="diag-item__msg">${msg}</div>
+        </div>
+    </div>`;
+}
+
+// ─── RENDER HANDS TABLE ─────────────────────────────────────────
+function renderHandsTable(hands) {
+    const tbody = document.getElementById('hands-tbody');
+    tbody.innerHTML = hands.map((h, i) => `
+        <tr>
+            <td style="color: var(--text-muted); font-weight: 600;">${i + 1}</td>
+            <td><span class="hands-table__id">${h.hand_id}</span></td>
+            <td><span class="platform-badge platform-badge--${h.platform}">${h.platform}</span></td>
+            <td>${renderCards(h.hero_cards)}</td>
+            <td>${statBadge(h.vpip)}</td>
+            <td>${statBadge(h.pfr)}</td>
+        </tr>
+    `).join('');
+}
+
+function renderCards(cardsStr) {
+    if (!cardsStr) return '<span style="color:var(--text-muted)">—</span>';
+    const cards = cardsStr.split(/\s+/);
+    return `<div class="poker-cards">${cards.map(c => {
+        const rank = c.slice(0, -1);
+        const suitChar = c.slice(-1).toLowerCase();
+        const suitMap = { h: 'hearts', d: 'diamonds', c: 'clubs', s: 'spades' };
+        const suitSymbols = { h: '♥', d: '♦', c: '♣', s: '♠' };
+        const suit = suitMap[suitChar] || 'spades';
+        const sym = suitSymbols[suitChar] || '♠';
+        return `<div class="poker-card poker-card--${suit}">
+            <span class="poker-card__rank">${rank}</span>
+            <span class="poker-card__suit">${sym}</span>
+        </div>`;
+    }).join('')}</div>`;
+}
+
+function statBadge(val) {
+    return val
+        ? `<span class="stat-badge stat-badge--yes">✔ Sí</span>`
+        : `<span class="stat-badge stat-badge--no">✘ No</span>`;
+}
+
+// ─── SAMPLE WARNING ─────────────────────────────────────────────
+function renderSampleWarning(total) {
+    const el = document.getElementById('sample-warning');
+    const textEl = document.getElementById('sample-warning-text');
+    if (total < 100) {
+        textEl.textContent = `La muestra es de solo ${total} mano(s). Para resultados estadísticamente significativos, se recomienda un mínimo de 1.000 manos.`;
+        el.style.display = 'flex';
+    } else {
+        el.style.display = 'none';
+    }
+}
+</script>
+</body>
+</html>
